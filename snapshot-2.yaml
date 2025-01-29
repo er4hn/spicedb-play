@@ -1,0 +1,48 @@
+schema: |-
+  definition user {}
+
+  definition user_group {
+  	relation member: user | user_group#member
+  }
+
+  definition repo {
+  	relation owner: user | user_group#member
+  	relation writer: user | user_group#member
+  	relation reader: user | user_group#member
+
+  	// Permissions are defined in terms of a base membership group
+  	// and higher level permissions.
+  	permission change_membership = owner
+  	permission write = writer + change_membership
+  	permission read = reader + write + change_membership
+  }
+relationships: "repo:charlie#owner@user:olivia\r
+
+  repo:charlie#reader@user:noah\r
+
+  user_group:FooOps#member@user:emma\r
+
+  user_group:FooOps#member@user:liam\r
+
+  user_group:FooOps#member@user_group:BarOps#member\r
+
+  user_group:BarOps#member@user_group:BazOps#member\r
+
+  user_group:BazOps#member@user:tony"
+assertions:
+  assertTrue:
+    - repo:charlie#read@user:olivia
+    - repo:charlie#write@user:olivia
+    - repo:charlie#owner@user:olivia
+    - repo:charlie#change_membership@user:olivia
+    - repo:charlie#read@user:noah
+  assertFalse:
+    - repo:charlie#change_membership@user:tony
+    - repo:charlie#write@user:noah
+validation:
+  repo:charlie#read:
+    - "[user:noah] is <repo:charlie#reader>"
+    - "[user:olivia] is <repo:charlie#owner>"
+  repo:charlie#reader:
+    - "[user:noah] is <repo:charlie#reader>"
+

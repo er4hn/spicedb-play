@@ -1,0 +1,62 @@
+schema: |-
+  definition user {}
+
+  definition user_group {
+  	relation member: user | user_group#member
+  }
+
+  definition repo_group {
+  	relation writer: user | user_group#member
+  	relation reader: user | user_group#member
+
+  	permission write = writer
+  	permission read = reader + writer
+  }
+
+  definition repo {
+  	relation repo_group: repo_group
+  	relation owner: user | user_group#member
+  	relation writer: user | user_group#member
+  	relation reader: user | user_group#member 
+
+  	// Permissions are defined in terms of a base membership group
+  	// and higher level permissions.
+  	permission change_membership = owner
+  	permission write = writer + change_membership + repo_group->write
+  	permission read = reader + write + change_membership + repo_group->read
+  }
+relationships: |-
+  repo:charlie#owner@user:olivia
+  repo:charlie#reader@user:noah
+  user_group:FooOps#member@user:emma
+  user_group:FooOps#member@user:liam
+  user_group:FooOps#member@user_group:BarOps#member
+  user_group:BarOps#member@user_group:BazOps#member
+  user_group:BazOps#member@user:tony
+  repo_group:Foo#writer@user_group:FooOps#member
+  repo:charlie#repo_group@repo_group:Foo
+  repo:bravo#repo_group@repo_group:Foo
+assertions:
+  assertTrue:
+    - repo:charlie#read@user:olivia
+    - repo:charlie#write@user:olivia
+    - repo:charlie#owner@user:olivia
+    - repo:charlie#change_membership@user:olivia
+    - repo:charlie#read@user:noah
+    - repo:bravo#read@user:emma
+    - repo:bravo#write@user:emma
+    - repo:charlie#write@user:tony
+  assertFalse:
+    - repo:charlie#change_membership@user:tony
+    - repo:charlie#write@user:noah
+    - repo:bravo#change_membership@user:emma
+validation:
+  repo:charlie#read:
+    - "[user:emma] is <user_group:FooOps#member>"
+    - "[user:liam] is <user_group:FooOps#member>"
+    - "[user:noah] is <repo:charlie#reader>"
+    - "[user:olivia] is <repo:charlie#owner>"
+    - "[user:tony] is <user_group:BazOps#member>"
+    - "[user_group:BarOps#member] is <user_group:FooOps#member>"
+    - "[user_group:BazOps#member] is <user_group:BarOps#member>"
+    - "[user_group:FooOps#member] is <repo_group:Foo#writer>"
