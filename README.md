@@ -24,4 +24,4 @@ zed permission check post:1 write user:beatrice --consistency-full # false
 
 ## Snapshots
 
-The snapshots represent different parts from the blog post on https://er4hn.info (blog url tbd). They can be loaded into the spicedb playground at: https://play.authzed.com/
+The snapshots represent different parts from the blog post on https://er4hn.info (https://er4hn.info/blog/2025.01.28-spicedb/). They can be loaded into the spicedb playground at: https://play.authzed.com/

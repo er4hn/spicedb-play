@@ -1,0 +1,65 @@
+schema: |-
+  use expiration
+
+  caveat release_attenuation(release_requested int, release_permitted int) {
+    release_requested == release_permitted
+  }
+
+  definition serviceapp {}
+
+  definition grant {
+      relation sign_perm: serviceapp
+      relation delete_perm: serviceapp
+      permission can_sign =  sign_perm
+      permission can_delete = delete_perm
+  }
+
+  definition user {
+      relation grant: grant with release_attenuation and expiration
+      permission can_sign_w_grant = grant->can_sign
+      permission can_delete_w_grant = grant->can_delete
+  }
+
+  definition role {
+      relation member: user
+
+      permission can_sign = member + member->can_sign_w_grant
+      permission can_delete = member + member->can_delete_w_grant
+  }
+
+  definition release {
+      relation signer: role
+      relation deleter: role
+      permission can_sign = signer->can_sign
+      permission can_delete = deleter->can_delete
+      permission can_complex_sign = can_sign & can_delete
+  }
+relationships: |-
+  role:release-leads#member@user:er4hn
+
+  // uncomment alpha being in release-leads and note how alpha's grant works after
+  // role:release-leads#member@user:alpha
+  release:1234#signer@role:release-leads
+  release:1234#deleter@role:release-leads
+  release:5678#signer@role:release-leads
+  grant:release-grant-er4hn-1234#sign_perm@serviceapp:release-signer
+  grant:release-grant-er4hn-1234#delete_perm@serviceapp:release-signer
+  grant:release-grant-alpha-5678#sign_perm@serviceapp:release-signer
+  user:er4hn#grant@grant:release-grant-er4hn-1234[release_attenuation:{"release_permitted":1234}][expiration:2035-03-31T12:00:00Z]
+  user:alpha#grant@grant:release-grant-alpha-5678[release_attenuation:{"release_permitted":5678}][expiration:2035-03-31T12:00:00Z]
+  // partial relationship: {"resourceType":"","resourceId":"","relation":"","subjectType":"","subjectId":"","subjectRelation":"","caveatName":"","caveatContext":"","expiration":""}
+assertions:
+  assertTrue:
+    - release:1234#can_sign@user:er4hn
+    - release:5678#can_sign@user:er4hn
+    - release:1234#can_complex_sign@user:er4hn
+    - 'release:1234#can_sign@serviceapp:release-signer with {"release_requested": 1234}'
+    - 'release:1234#can_complex_sign@serviceapp:release-signer with {"release_requested": 1234}'
+  assertFalse:
+    - release:5432#can_sign@user:er4hn
+    - release:1234#can_sign@user:alpha
+    - 'release:5678#can_complex_sign@serviceapp:release-signer with {"release_requested": 1234}'
+    - 'release:5678#can_sign@serviceapp:release-signer with {"release_requested": 5678}'
+    - 'release:1234#can_sign@serviceapp:release-signer with {"release_requested": 5}'
+    - 'release:1234#can_sign@serviceapp:release-signer with {"release_requested": 5, "release_permitted": 5}'
+validation: {}
